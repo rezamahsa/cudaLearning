@@ -21,6 +21,7 @@ Every GPU has a version number `X.Y` to indicate its **compute capability**.
 | `X=8` | Ampere | 2020 |
 
 GPUs older than Pascal will become deprecated soon
+
 performance of a GeForce GPU is only 1/32 of its single-precision performance
 
 ## 1.2 Introduction to CUDA 
@@ -197,7 +198,6 @@ In general:
 
 ## Limits on the grid and block sizes
 
-
 For all the GPUs starting from the Kepler architecture, the grid size is limited to 
 ```c++
   gridDim.x <= 2^{31}-1
@@ -225,6 +225,7 @@ flag `-arch=compute_XY` to `nvcc` is needed to specify the compute capability of
 flag `-code=sm_ZW` is needed to specify the compute capability of a **real architecture**
 
 **The compute capability of the real architecture must be no less than that of the virtual architecture.**
+
 For example, 
 ```
 $ nvcc -arch=compute_60 -code=sm_70 xxx.cu
