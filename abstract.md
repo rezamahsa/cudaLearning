@@ -36,7 +36,7 @@ performance of a GeForce GPU is only 1/32 of its single-precision performance
 
 For Linux, check this manual: https://docs.nvidia.com/cuda/cuda-installation-guide-linux
 
-## 2.1 Hello CUDA 
+## Hello CUDA 
 
 ```c++
 __global__ void hello_from_gpu()
@@ -55,7 +55,7 @@ void __global__ hello_from_gpu()
 ```shell
 $ nvcc hello1.cu
 ```
-## 2.1 Hello CUDA 2
+## Hello CUDA 2
 
 ```c++
 #include <stdio.h>
@@ -70,3 +70,150 @@ int main(void)
     return 0;
 }
 ```
+
+`cudaDeviceSynchronize();` synchronize the host and the device, making sure that the output stream for the printf function has been flushed before returning from the kernel to the host.
+
+## A CUDA kernel using multiple threads
+
+```c++
+#include <stdio.h>
+__global__ void hello_from_gpu()
+{
+    printf("Hello World from the GPU!\n");
+}
+int main(void)
+{
+    hello_from_gpu<<<2, 4>>>();
+    cudaDeviceSynchronize();
+    return 0;
+}
+
+```
+    Hello World from the GPU!
+    Hello World from the GPU!
+    Hello World from the GPU!
+    Hello World from the GPU!
+    Hello World from the GPU!
+    Hello World from the GPU!
+    Hello World from the GPU!
+    Hello World from the GPU!
+```
+
+## Using thread indices in a CUDA kernel
+
+```c++
+#include <stdio.h>
+__global__ void hello_from_gpu()
+{
+    const int bid = blockIdx.x;
+    const int tid = threadIdx.x;
+    printf("Hello World from block %d and thread %d!\n", bid, tid);
+}
+int main(void)
+{
+    hello_from_gpu<<<2, 4>>>();
+    cudaDeviceSynchronize();
+    return 0;
+}
+```
+
+```
+    Hello World from block 1 and thread 0.
+    Hello World from block 1 and thread 1.
+    Hello World from block 1 and thread 2.
+    Hello World from block 1 and thread 3.
+    Hello World from block 0 and thread 0.
+    Hello World from block 0 and thread 1.
+    Hello World from block 0 and thread 2.
+    Hello World from block 0 and thread 3.
+```
+and sometimes we get the following output,
+```
+    Hello World from block 0 and thread 0.
+    Hello World from block 0 and thread 1.
+    Hello World from block 0 and thread 2.
+    Hello World from block 0 and thread 3.
+    Hello World from block 1 and thread 0.
+    Hello World from block 1 and thread 1.
+    Hello World from block 1 and thread 2.
+    Hello World from block 1 and thread 3.
+```
+
+## Generalization to multi-dimensional grids and blocks
+
+* `blockIdx` and `threadIdx` are of type `uint3`, which is defined in `vector_types.h` as:
+```c++
+    struct __device_builtin__ uint3
+    {
+        unsigned int x, y, z;
+    };    
+    typedef __device_builtin__ struct uint3 uint3;
+```
+We can use the constructors of the struct `dim3` to define multi-dimensional grids and blocks:
+```c++
+    dim3 grid_size(Gx, Gy, Gz);
+    dim3 block_size(Bx, By, Bz);
+```
+If the size of the `z` dimension is 1, we can simplify the above definitions to:
+```c++
+    dim3 grid_size(Gx, Gy);
+    dim3 block_size(Bx, By);
+```
+
+example :
+```c++
+#include <stdio.h>
+__global__ void hello_from_gpu()
+{
+    const int b = blockIdx.x;
+    const int tx = threadIdx.x;
+    const int ty = threadIdx.y;
+    printf("Hello World from block-%d and thread-(%d, %d)!\n", b, tx, ty);
+}
+int main(void)
+{
+    const dim3 block_size(2, 4);
+    hello_from_gpu<<<1, block_size>>>();
+    cudaDeviceSynchronize();
+    return 0;
+}
+```
+
+```
+    Hello World from block-0 and thread-(0, 0)!
+    Hello World from block-0 and thread-(1, 0)!
+    Hello World from block-0 and thread-(0, 1)!
+    Hello World from block-0 and thread-(1, 1)!
+    Hello World from block-0 and thread-(0, 2)!
+    Hello World from block-0 and thread-(1, 2)!
+    Hello World from block-0 and thread-(0, 3)!
+    Hello World from block-0 and thread-(1, 3)!
+```
+
+In general:
+```c++
+    int tid = threadIdx.z * blockDim.x * blockDim.y + threadIdx.y * blockDim.x + threadIdx.x;
+```
+
+## Limits on the grid and block sizes
+
+
+For all the GPUs starting from the Kepler architecture, the grid size is limited to 
+```c++
+  gridDim.x <= 2^{31}-1
+  gridDim.y <= 2^{16}-1 = 65535
+  gridDim.z <= 2^{16}-1 = 65535
+```
+and the block size is limited to
+```c++
+  blockDim.x <= 1024
+  blockDim.y <= 1024
+  blockDim.z <= 64
+```
+Besides this, there is an important limit on the following product:
+```c++
+  blockDim.x * blockDim.y * blockDim.z <= 1024
+```
+**It is important to remember the above limits.**
+
+
