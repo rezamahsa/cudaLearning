@@ -216,4 +216,21 @@ Besides this, there is an important limit on the following product:
 ```
 **It is important to remember the above limits.**
 
+## 2.5.2 Some important flags for `nvcc` 
 
+The CUDA compiler driver `nvcc` first separates the source code into host code and device code. The host code will be compiled by a host C++ compiler such as `cl.exe` or `g++`. `nvcc` will first compile the device code into an intermediate PTX（Parallel Thread eXecution）code, and then compile the PTX code into a **cubin** binary. 
+
+flag `-arch=compute_XY` to `nvcc` is needed to specify the compute capability of a **virtual architecture**
+
+flag `-code=sm_ZW` is needed to specify the compute capability of a **real architecture**
+
+**The compute capability of the real architecture must be no less than that of the virtual architecture.**
+For example, 
+```
+$ nvcc -arch=compute_60 -code=sm_70 xxx.cu
+```
+is ok, but 
+```
+$ nvcc -arch=compute_70 -code=sm_60 xxx.cu
+```
+will result in errors.
